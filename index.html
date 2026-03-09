@@ -1,191 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ROBO ARENA | PRO</title>
-
-    <link rel="icon" type="image/png" href="img/favicon.png">
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/chatbot.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plinkpo Casino — Fixed</title>
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between;
+    background: radial-gradient(circle at top, #1a0028, #000);
+    color:#fff; font-family:Poppins, Arial, sans-serif; overflow:hidden;
+  }
+  header{width:100%; background:linear-gradient(90deg,#31005a,#1a0028); padding:10px 15px;
+    display:flex; align-items:center; justify-content:space-between; box-shadow:0 0 15px #8e00ff;}
+  .balance-section{display:flex;gap:10px; font-weight:700}
+  .balance-section span{color:#00ff90}
+  canvas{background:#150022; border:2px solid #8e00ff; border-radius:16px; box-shadow:0 0 25px #8e00ff; display:block;}
+  .controls{display:flex; gap:10px; margin:12px 0; align-items:center;}
+  input{background:#1a0033;border:2px solid #8e00ff;border-radius:8px;padding:8px 12px;color:#ffb6ff;font-weight:700;width:110px;text-align:center}
+  button{background:linear-gradient(90deg,#8e00ff,#ff00b3); border:none; padding:10px 16px; border-radius:10px; cursor:pointer; color:#fff; font-weight:700}
+  .reward{position:absolute;font-weight:800;color:gold;text-shadow:0 0 10px gold;animation:floatUp 1s ease-out forwards;pointer-events:none;font-size:1.1rem}
+  @keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-80px)}}
+  footer{width:100%; background:linear-gradient(90deg,#31005a,#1a0028); display:flex; justify-content:space-around; align-items:center; padding:10px 0; box-shadow:0 0 15px #8e00ff; font-weight:700}
+  @media (max-width:600px){ canvas{width:300px!important;height:500px!important} .controls{flex-direction:column} }
+  #startAudio { background: #00cc70; color:#000; border-radius:8px; padding:8px 12px; font-weight:800; }
+  .log { position: fixed; left:8px; bottom:80px; background: rgba(0,0,0,0.5); color:#eee; padding:6px 8px; font-size:12px; border-radius:6px; max-width:260px; }
+</style>
 </head>
 <body>
-<!-- PREMIUM GAME LOADING / INSTALLER SCREEN -->
-<div id="installerScreen" class="installer-screen">
+  <header>
+    <div class="balance-section">💰 Balance: <span id="balance">1000.00</span></div>
+    <div class="icons">⚡ ⚙️</div>
+  </header>
 
-    <!-- Rotating glowing logo -->
-    <div class="installer-logo-wrap">
-        <img src="img/robo-logo.png" class="installer-logo" />
-    </div>
+  <h2 style="text-shadow:0 0 20px #8e00ff; margin:8px 0 4px;">PLINKPO CASINO (Fixed)</h2>
+  <canvas id="plinkoCanvas" width="400" height="600" aria-label="Plinko game"></canvas>
 
-    <!-- Message display -->
-    <div id="installerText" class="installer-text">Initializing...</div>
+  <div class="controls">
+    <input id="betAmount" type="number" value="10" min="1" />
+    <button id="dropBtn">🎯 Drop Ball</button>
+    <button id="startAudio">Enable Audio</button>
+  </div>
 
-    <!-- Progress bar -->
-    <div class="progress-wrap">
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="progress-percent">
-            <span id="progressPercent">0</span>%
-        </div>
-    </div>
+  <div id="infoPanel" style="margin-bottom:6px; background:rgba(142,0,255,0.12); padding:8px 14px; border-radius:10px; border:1px solid #8e00ff;">
+    🏆 Total Won: <span id="totalWon">0</span>
+  </div>
 
-</div>
+  <footer>
+    <div>🏠 Menu</div><div>🔍 Search</div><div>🎰 Casino</div><div>⚽ Sports</div><div>💬 Chat</div>
+  </footer>
 
-<!-- Optional sounds -->
-<audio id="stepSound" src="sounds/boot.mp3" preload="auto"></audio>
-<audio id="completeSound" src="sounds/ready.mp3" preload="auto"></audio>
+  <div class="log" id="logBox">Console logs will appear here</div>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="js/config.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
 
-    <!-- HEADER -->
-    <header class="pink-header">
-        <div style="display: flex; align-items: center;">
-            <img src="img/robo-logo.png" alt="Logo" class="brand-logo">
-            <span class="logo-text">ROBO<span class="pro-tag">ARENA</span></span>
-        </div>
-        <div class="user-status" style="font-size: 0.7rem; font-weight: 800; color: #00ff88;">● SERVER LIVE</div>
-    </header>
+  // =========================
+  // FIREBASE CONNECTION
+  // =========================
+  if (typeof firebase === "undefined") {
+    alert("Firebase SDK not loaded.");
+    return;
+  }
 
-    <!-- MARQUEE -->
-    <div class="pink-marquee">
-        <div class="marquee-inner">💎 $100 REFERRAL BONUS ACTIVE 💎 NEW PLINKO ENGINE v2.0 💎 INSTANT WITHDRAWALS 💎</div>
-    </div>
+  const db = window.db;
+  const auth = window.auth;
 
-    <!-- HERO SECTION -->
-    <main class="hero-box">
-        <h1 class="main-title">THE ARENA</h1>
-        <div class="auth-buttons">
-            <button class="mega-glow-btn join" onclick="openModal('regModal')">JOIN THE PROS</button>
-            <button class="mega-glow-btn login" onclick="openModal('loginModal')">MEMBER LOGIN</button>
-        </div>
-    </main>
+  let currentUser = null;
 
-    <!-- STORY GRID -->
-    <section class="story-grid">
-        <div class="story-card">
-            <i class="fas fa-dice-d20" style="color: #ffcc00;"></i>
-            <h3>ELITE PHYSICS</h3>
-            <p>Our Plinko engine uses real-time gravity simulation for the ultimate fair gamble experience.</p>
-        </div>
-        <div class="story-card">
-            <i class="fas fa-coins" style="color: #00f2ff;"></i>
-            <h3>FAST CASINO</h3>
-            <p>Deposit and withdraw in seconds. Your winnings are processed by our turbo predictive engine.</p>
-        </div>
-        <div class="story-card">
-            <i class="fas fa-clover" style="color: #00ff88;"></i>
-            <h3>LUCKY STREAKS</h3>
-            <p>Unlock multipliers up to 125x. The Arena rewards the boldest players with instant bonus. You can hit a big jackpot that can change your life if you are lucky.</p>
-        </div>
-    </section>
+  // =========================
+  // ELEMENTS
+  // =========================
+  const canvas = document.getElementById('plinkoCanvas');
+  const ctx = canvas.getContext('2d');
+  const dropBtn = document.getElementById('dropBtn');
+  const betInput = document.getElementById('betAmount');
+  const balanceEl = document.getElementById('balance');
+  const totalWonEl = document.getElementById('totalWon');
+  const startAudioBtn = document.getElementById('startAudio');
 
-    <!-- REGISTER MODAL -->
-    <div id="regModal" class="modal-overlay">
-        <div class="pink-glass-modal">
-            <h2 style="font-family: 'Orbitron'; text-align: center;">CREATE ACCOUNT</h2>
-            <div class="form-grid">
-                <input type="text" id="regFullName" placeholder="Full Name">
-                <input type="text" id="regUser" placeholder="Username">
-                <input type="number" id="regAge" placeholder="Age">
-                <select id="regCountry">
-    <option value="">Select Country</option>
-    <option value="USA">USA</option>
-    <option value="Canada">Canada</option>
-    <option value="United Kingdom">United Kingdom</option>
-    <option value="Germany">Germany</option>
-</select>
-                <select id="regGender">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-                <input type="text" id="regAddress" placeholder="Physical Address">
-                <input type="tel" id="regPhone" placeholder="Phone Number">
-                <input type="email" id="regEmail" placeholder="Email Address">
-                <input type="password" id="regPass" placeholder="Create Password">
-                <input type="password" id="regPassConfirm" placeholder="Confirm Password">
-                <input type="text" id="regRef" placeholder="Referral Code (Optional)">
-            </div>
-            <button class="btn-submit" onclick="handleRegister()">ACTIVATE & CLAIM $100</button>
-            <button onclick="closeModal('regModal')" style="background:none; border:none; color:#777; width:100%; margin-top:10px; cursor:pointer;">CANCEL</button>
-        </div>
-    </div>
+  // =========================
+  // GAME STATE (UNCHANGED)
+  // =========================
+  let balance = 1000;
+  let totalWon = 0;
 
-    <!-- LOGIN MODAL -->
-    <div id="loginModal" class="modal-overlay">
-        <div class="pink-glass-modal">
-            <h2 style="font-family: 'Orbitron'; text-align: center;">WELCOME BACK</h2>
-            <div class="form-grid">
-                <input type="email" id="loginEmail" placeholder="Email">
-                <input type="password" id="loginPass" placeholder="Password">
-            </div>
-            <button class="btn-submit" onclick="handleLogin()">ENTER ARENA</button>
-            <button onclick="closeModal('loginModal')" style="background:none; border:none; color:#777; width:100%; margin-top:10px; cursor:pointer;">CANCEL</button>
-            <p style="text-align:right; font-size:0.75rem;">
-                <a href="#" onclick="resetPassword()" style="color:#00ff88;">Forgot password?</a>
-            </p>
-            
-            <p style="text-align:right; font-size:0.75rem;">
-    <a href="#" onclick="resendVerification()" style="color:#00ff88;">
-        Resend verification email
-    </a>
-</p>
-        </div>
-    </div>
+  // =========================
+  // LOAD USER FROM FIREBASE
+  // =========================
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      alert("Please login first.");
+      return;
+    }
 
-   <!-- CHATBOT BUBBLE -->
-<div id="chatbotBubble">💬</div>
+    currentUser = user;
 
-<!-- CHAT WINDOW -->
-<div id="chatbotWindow" class="hidden">
-    <div class="chat-header">
-        <span>ROBO ARENA SUPPORT</span>
-        <button id="chatClose">✖</button>
-    </div>
+    try {
+      const doc = await db.collection("users").doc(user.uid).get();
 
-    <div id="chatMessages"></div>
+      if (doc.exists) {
+        balance = doc.data().balance || 1000;
+      } else {
+        // create user doc if not exists
+        await db.collection("users").doc(user.uid).set({
+          balance: balance
+        });
+      }
 
-    <button onclick="requestLiveAgent()" class="agent-btn">
-        Talk to Agent
-    </button>
+      updateUI();
+    } catch (err) {
+      console.error("Firestore error:", err);
+    }
+  });
 
-    <div class="chat-input-area">
-        <input id="chatInput" placeholder="Type your message..." />
-        <button onclick="sendChat()">Send</button>
-    </div>
-</div>
+  // =========================
+  // CANVAS SCALING
+  // =========================
+  function scaleCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = 400, h = 600;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  scaleCanvas();
 
-<div id="authSpinner" style="
-display:none;
-position:fixed;
-top:0;left:0;
-width:100%;height:100%;
-background:rgba(0,0,0,.6);
-z-index:9999;
-align-items:center;
-justify-content:center;
-color:#00ff88;
-font-size:1.2rem;
-">
-Processing…   ⏳
-</div>
+  // =========================
+  // GAME CONFIG (UNCHANGED)
+  // =========================
+  const pegs = [];
+  const balls = [];
+  const slots = [];
+  const slotMultipliers = [0,0.05,0.1,0.5,1,2,5,10,50,100];
+  const rows = 10;
+  const cols = 9;
+  const pegRadius = 4;
+  const ballRadius = 6;
+  const gravity = 0.25;
+  const damping = 0.75;
 
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const offset = (r % 2) * 20;
+      pegs.push({ x: 40 + c * 36 + offset, y: 50 + r * 45 });
+    }
+  }
+  for (let i = 0; i <= cols; i++) {
+    slots.push({ x: 40 + i * 36 });
+  }
 
-    <!-- FOOTER -->
-    <footer class="main-footer">
-        <img src="img/robo-logo.png" class="footer-logo">
-        <p style="font-size: 0.8rem; opacity: 0.5;">© 2026 ROBO ARENA PRO. SECURE ENCRYPTED GAMING.</p>
-    </footer>
+  class Ball {
+    constructor(x,y,color,bet){
+      this.x=x; this.y=y;
+      this.vx=0; this.vy=0;
+      this.color=color;
+      this.bet=bet;
+      this.stopped=false;
+    }
 
-    <!-- SCRIPTS (LOAD IN CORRECT ORDER) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/telegram.js"></script>
-    <script src="js/chatbot.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/index.js"></script>
+    update(){
+      if(this.stopped) return;
+
+      this.vy += gravity;
+      this.x += this.vx;
+      this.y += this.vy;
+
+      for(const peg of pegs){
+        const dx = this.x - peg.x;
+        const dy = this.y - peg.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(dist < pegRadius + ballRadius){
+          const angle = Math.atan2(dy, dx);
+          const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy) || 2;
+          this.vx = Math.cos(angle) * speed * damping;
+          this.vy = Math.sin(angle) * speed * damping;
+        }
+      }
+
+      if(this.x < ballRadius) this.x = ballRadius;
+      if(this.x > 400 - ballRadius) this.x = 400 - ballRadius;
+
+      if(this.y > 600 - 30 - ballRadius){
+        this.stopped = true;
+        this.handleResult();
+      }
+    }
+
+    handleResult(){
+      let nearest = 0, minD = Infinity;
+
+      for(let i=0;i<slots.length;i++){
+        const d = Math.abs(this.x - slots[i].x);
+        if(d < minD){ minD = d; nearest = i; }
+      }
+
+      const multiplier = slotMultipliers[nearest] || 0;
+      const winAmount = this.bet * multiplier;
+
+      if(winAmount > 0){
+        totalWon += winAmount;
+        balance += winAmount;
+      }
+
+      updateUI();
+    }
+
+    draw(){
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,ballRadius,0,Math.PI*2);
+      ctx.fillStyle=this.color;
+      ctx.shadowBlur=15;
+      ctx.shadowColor=this.color;
+      ctx.fill();
+      ctx.shadowBlur=0;
+    }
+  }
+
+  function drawPegs(){
+    ctx.fillStyle="#fff";
+    for(const p of pegs){
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,pegRadius,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawSlots(){
+    ctx.strokeStyle="#8e00ff";
+    ctx.lineWidth=2;
+    for(let i=0;i<slots.length;i++){
+      ctx.beginPath();
+      ctx.moveTo(slots[i].x,570);
+      ctx.lineTo(slots[i].x,600);
+      ctx.stroke();
+    }
+  }
+
+  function updateUI(){
+    balanceEl.innerText = balance.toFixed(2);
+    totalWonEl.innerText = totalWon.toFixed(2);
+  }
+
+  function gameLoop(){
+    ctx.clearRect(0,0,400,600);
+    drawPegs();
+    drawSlots();
+    for(const b of balls){ b.update(); b.draw(); }
+    requestAnimationFrame(gameLoop);
+  }
+
+  dropBtn.addEventListener('click', () => {
+    const bet = parseFloat(betInput.value);
+    if(isNaN(bet) || bet <= 0) return alert("Invalid bet");
+    if(bet > balance) return alert("Not enough balance");
+
+    balance -= bet;
+    updateUI();
+
+    const ball = new Ball(200, 12, "#ff00b3", bet);
+    balls.push(ball);
+  });
+
+  updateUI();
+  gameLoop();
+
+});
+</script>
 </body>
 </html>
