@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================
   // GAME STATE (UNCHANGED)
   // =========================
-  let balance = 1000;
+  let balance = 100;
   let totalWon = 0;
 
   // =========================
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const doc = await db.collection("users").doc(user.uid).get();
 
       if (doc.exists) {
-        balance = doc.data().balance || 1000;
+        balance = doc.data().balance || 100;
       } else {
         // create user doc if not exists
         await db.collection("users").doc(user.uid).set({
