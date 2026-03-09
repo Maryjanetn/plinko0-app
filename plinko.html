@@ -1,247 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Turbo Plinko</title>
-<link rel="stylesheet" href="css/plinko.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plinkpo Casino — Fixed</title>
 <style>
-/* ====================== EARLY WITHDRAW POPUP ====================== */
-.deposit-popup { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:999; }
-.deposit-popup .popup-content { background:#050a0f; padding:20px; border-radius:10px; min-width:300px; max-width:400px; text-align:center; position:relative; animation: slideUp 0.3s ease; }
-.deposit-popup .popup-content h3 { margin-bottom:10px; color:var(--neon-orange); }
-.deposit-popup .popup-content span.close-btn { position:absolute; top:10px; left:12px; font-size:18px; cursor:pointer; }
-.deposit-popup .wallet-grid { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
-.deposit-popup .wallet-grid button { flex:0 0 45%; padding:10px; border-radius:5px; background:#111; color:#fff; display:flex; align-items:center; gap:5px; border:1px solid #555; cursor:pointer; }
-.deposit-popup .wallet-grid button:hover { background:#222; }
-@keyframes slideUp { from {transform:translateY(50px); opacity:0;} to {transform:translateY(0); opacity:1;} }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between;
+    background: radial-gradient(circle at top, #1a0028, #000);
+    color:#fff; font-family:Poppins, Arial, sans-serif; overflow:hidden;
+  }
+  header{width:100%; background:linear-gradient(90deg,#31005a,#1a0028); padding:10px 15px;
+    display:flex; align-items:center; justify-content:space-between; box-shadow:0 0 15px #8e00ff;}
+  .balance-section{display:flex;gap:10px; font-weight:700}
+  .balance-section span{color:#00ff90}
+  canvas{background:#150022; border:2px solid #8e00ff; border-radius:16px; box-shadow:0 0 25px #8e00ff; display:block;}
+  .controls{display:flex; gap:10px; margin:12px 0; align-items:center;}
+  input{background:#1a0033;border:2px solid #8e00ff;border-radius:8px;padding:8px 12px;color:#ffb6ff;font-weight:700;width:110px;text-align:center}
+  button{background:linear-gradient(90deg,#8e00ff,#ff00b3); border:none; padding:10px 16px; border-radius:10px; cursor:pointer; color:#fff; font-weight:700}
+  .reward{position:absolute;font-weight:800;color:gold;text-shadow:0 0 10px gold;animation:floatUp 1s ease-out forwards;pointer-events:none;font-size:1.1rem}
+  @keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-80px)}}
+  footer{width:100%; background:linear-gradient(90deg,#31005a,#1a0028); display:flex; justify-content:space-around; align-items:center; padding:10px 0; box-shadow:0 0 15px #8e00ff; font-weight:700}
+  @media (max-width:600px){ canvas{width:300px!important;height:500px!important} .controls{flex-direction:column} }
+  #startAudio { background: #00cc70; color:#000; border-radius:8px; padding:8px 12px; font-weight:800; }
+  .log { position: fixed; left:8px; bottom:80px; background: rgba(0,0,0,0.5); color:#eee; padding:6px 8px; font-size:12px; border-radius:6px; max-width:260px; }
 </style>
 </head>
 <body>
-<!-- ===============================
-     LEVEL 4 INSTALLER OVERLAY
-================================= -->
-<div id="neoInstaller" style="display:none;">
-    <div class="installer-core">
-        <div class="orb-wrap">
-            <div class="orb"></div>
-        </div>
-        <h2>ROBO ARENA PRO - Configuring...</h2>
-        <p id="installMessages">Installing modules... Please wait.</p>
-        <div class="loader-bar">
-            <div class="loader-progress" id="installProgress"></div>
-        </div>
-        <p id="progressDots">● ● ●</p>
-    </div>
-</div>
+  <header>
+    <div class="balance-section">💰 Balance: <span id="balance">1000.00</span></div>
+    <div class="icons">⚡ ⚙️</div>
+  </header>
 
-<!-- ===============================
-     FLOATING CHATBOT
-================================= -->
-<header>
-    <!-- LEFT: Logo + Sound + Logout + Withdraw -->
-    <div class="header-left">
-        <div class="logo-container">
-            <img src="img/robo-logo.png" alt="Logo" class="brand-logo">
-        </div>
+  <h2 style="text-shadow:0 0 20px #8e00ff; margin:8px 0 4px;">PLINKPO CASINO (Fixed)</h2>
+  <canvas id="plinkoCanvas" width="400" height="600" aria-label="Plinko game"></canvas>
 
-        <!-- Smaller Volume Control -->
-        <div class="volume-wrapper">
-            <label class="volume-label">SOUND <span id="volValue">50%</span></label>
-            <input type="range" min="0" max="1" step="0.1" value="0.5" class="volume-slider" oninput="setVolume(this.value)">
-        </div>
+  <div class="controls">
+    <input id="betAmount" type="number" value="10" min="1" />
+    <button id="dropBtn">🎯 Drop Ball</button>
+    <button id="startAudio">Enable Audio</button>
+  </div>
 
-        <!-- Logout button beside volume -->
-        <button class="pill-btn-sm logout-btn" onclick="location.href='index.html'">⏻Logout</button>
+  <div id="infoPanel" style="margin-bottom:6px; background:rgba(142,0,255,0.12); padding:8px 14px; border-radius:10px; border:1px solid #8e00ff;">
+    🏆 Total Won: <span id="totalWon">0</span>
+  </div>
 
-        <!-- Withdraw button -->
-        <button onclick="requestWithdrawal()" class="pill-btn-sm withdraw-btn">💵Withdraw</button>
-    </div>
+  <footer>
+    <div>🏠 Menu</div><div>🔍 Search</div><div>🎰 Casino</div><div>⚽ Sports</div><div>💬 Chat</div>
+  </footer>
 
-    <!-- CENTER: Referral + Copy + Balance -->
-    <div class="referral-center">
-        <input type="text" id="referralLink" readonly placeholder="Your referral link">
-        <button class="pill-btn-sm" onclick="copyReferral()">📄Copy</button>
-        <div class="balance-container">💶$<span id="balanceDisplay">20.00</span></div>
-    </div>
-</header>
-<main class="game-container">
-    <canvas id="plinkoCanvas"></canvas>
-    
-    <style>
-    /* 1. This keeps the boxes in one line and stops them from overflowing */
-    .multiplier-labels {
-        display: flex;
-        justify-content: center;
-        gap: 4px; /* Space between boxes */
-        flex-wrap: nowrap; /* Forces them to stay on one line */
-        width: 100%;
-        padding: 10px 0;
-    }
-
-    /* 2. Narrower boxes with the flashing glow */
-    .m-box {
-        flex: 1; /* Makes them share space equally */
-        min-width: 0; /* Allows them to shrink small enough for mobile/canvas */
-        max-width: 50px; /* Limits how wide they get */
-        padding: 5px 2px;
-        background: #111;
-        color: white;
-        border-radius: 4px;
-        text-align: center;
-        font-size: 10px; /* Smaller font for small canvas */
-        font-weight: bold;
-        z-index: 1;
-        border: 1px solid rgba(255,255,255,0.1);
-        
-        /* The Flashing Animation */
-        animation: flash-glow 2s ease-in-out infinite;
-    }
-
-    @keyframes flash-glow {
-        0%, 100% {
-            box-shadow: 0 0 2px #ff0000;
-            border-color: #ff0000;
-            opacity: 0.6;
-        }
-        50% {
-            box-shadow: 0 0 8px #00ff00, 0 0 12px #00ff00;
-            border-color: #00ff00;
-            opacity: 1;
-        }
-    }
-</style>
-
-<div class="multiplier-labels">
-    <div class="m-box">125</div><div class="m-box">14</div><div class="m-box">5</div>
-    <div class="m-box">1.3</div><div class="m-box">0.4</div><div class="m-box">0.2</div>
-    <div class="m-box">0.2</div><div class="m-box">0.4</div><div class="m-box">1.3</div>
-    <div class="m-box">5</div><div class="m-box">14</div><div class="m-box">125</div>
-</div>
-
-
-    <!-- Bet Selector -->
-    <div class="bet-selector-vertical">
-        <button class="bet-circle-btn" onclick="adjustBet(5)">+</button>
-        <div class="bet-display-box" style="text-align: center;">
-            <small class="bet-label">DISK COST</small>
-            <div id="currentBetDisplay">$5</div>
-        </div>
-        <button class="bet-circle-btn" onclick="adjustBet(-5)">-</button>
-    </div>
-
-    <button class="drop-btn" onclick="dropDisk()">
-        DROP DISK <br>
-        <small id="btnSubtext">bet amount $5.00</small>
-    </button><div id="chatbotContainer" onclick="toggleChat()">💬</div>
-<div id="chatbotWindow">
-    <div id="chatHeader">
-        <span>RoboBot</span>
-        <button onclick="toggleChat()">×</button>
-    </div>
-    <div id="chatMessages"></div>
-    <div style="display:flex; padding:5px;">
-        <input type="text" id="chatInput" placeholder="Type a message..." />
-        <button id="sendChat" onclick="sendMessage()">Send</button>
-    </div>
-</div>
-
-    <!-- Referral History -->
-    <div class="ref-history">
-        <h3>Referral Earnings</h3>
-        <div id="refHistoryList"></div>
-    </div>
-
-    <!-- Leaderboard -->
-    <div class="leaderboard">
-        <h3>Top Referrers</h3>
-        <div id="leaderboardList"></div>
-    </div>
-</main>
-
-<!-- NORMAL POPUP -->
-<div id="custom-popup">
-    <div class="popup-content">
-        <h2 style="color: var(--neon-cyan);">NOTICE</h2>
-        <p id="popup-message"></p>
-        <button onclick="closePopup()" class="popup-close-btn">OK</button>
-    </div>
-</div>
-
-<!-- JACKPOT CERTIFICATE -->
-<div id="cert-overlay">
-    <div class="popup-content" style="border-color: var(--gold);">
-        <h1 style="color: var(--neon-orange); margin:0; font-size:22px;">OFFICIAL JACKPOT</h1>
-        <p>AWARDED TO: <span id="cert-user" style="color:white;font-weight:bold;">USER</span></p>
-        <h2 style="color: var(--gold); font-size:32px;">$95,000!</h2>
-        <button onclick="closeJackpot()" class="drop-btn" style="font-size:14px;padding:12px;">CLAIM WINNINGS</button>
-    </div>
-</div>
-
-<!-- WITHDRAWAL GATE -->
-<div id="withdraw-gateway">
-    <div class="popup-content">
-        <h2 style="color: var(--neon-orange);">WITHDRAWAL MENU</h2>
-        <p>Wallet Balance: <span id="gateBalance" style="color: var(--neon-cyan); font-weight:bold;">$0.00</span></p>
-        <p>Last Jackpot: <span id="jackpotAmount">$0.00</span></p>
-        <p>Total Available: <span id="totalAmount">$0.00</span></p>
-        <p>Select Method:</p>
-        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:15px;">
-            <button class="pill-btn-sm" onclick="selectMethod('Bank')">Bank Transfer</button>
-            <button class="pill-btn-sm" onclick="selectMethod('Bitcoin')">Bitcoin BTC</button>
-        </div>
-        <div id="method-fields" style="display:none;">
-            <textarea id="paymentDetails" placeholder="Enter Account Details or BTC Address"></textarea>
-            <button class="drop-btn" onclick="submitFinalWithdrawal()">COMPLETE WITHDRAWAL</button>
-        </div>
-    </div>
-</div>
-
-<!-- EARLY-WITHDRAW POPUPS INJECTED -->
-<div id="early-withdraw-popup" class="deposit-popup">
-    <div class="popup-content">
-        <span class="close-btn" onclick="closeEarlyWithdraw()">❌</span>
-        <h3 id="earlyWithdrawText"></h3>
-        <button onclick="showEarlyPaymentOptions()">Proceed to Payment</button>
-        <button class"drop-btn" onclick="closeEarlyWithdraw()">Cancel</button>
-    </div>
-</div>
-
-<div id="early-payment-popup" class="deposit-popup">
-    <div class="popup-content">
-        <span class="close-btn" onclick="closeEarlyPayment()">❌</span>
-        <h3>Select Wallet</h3>
-        <div class="wallet-grid">
-            <button onclick="selectEarlyWallet('Bitcoin')">₿ Bitcoin</button>
-            <button onclick="selectEarlyWallet('Ethereum')">Ξ Ethereum</button>
-            <button onclick="selectEarlyWallet('USDT')">USDT</button>
-            <button onclick="selectEarlyWallet('BNB')">BNB</button>
-            <button onclick="selectEarlyWallet('Litecoin')">Litecoin</button>
-            <button onclick="selectEarlyWallet('TRON')">TRON</button>
-            <button onclick="selectEarlyWallet('Solana')">Solana</button>
-            <button onclick="selectEarlyWallet('Polygon')">Polygon</button>
-            <button onclick="selectEarlyWallet('Ripple')">Ripple</button>
-            <button onclick="selectEarlyWallet('Other')">Other</button>
-        </div>
-        <button onclick="closeEarlyPayment()">Cancel</button>
-    </div>
-</div>
-
-<div id="early-wallet-popup" class="deposit-popup">
-    <div class="popup-content">
-        <span class="close-btn" onclick="closeEarlyWallet()">❌</span>
-        <h3 id="earlyWalletTitle"></h3>
-        <textarea id="earlyWalletAddress" readonly></textarea>
-        <p id="earlyTimer">25:00</p>
-        <button onclick="confirmEarlyPayment()">I Have Paid</button>
-    </div>
-</div>
-
+  <div class="log" id="logBox">Console logs will appear here</div>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 <script src="js/config.js"></script>
-<script src="js/games.js"></script>
-<script src="js/protect.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  // =========================
+  // FIREBASE CONNECTION
+  // =========================
+  if (typeof firebase === "undefined") {
+    alert("Firebase SDK not loaded.");
+    return;
+  }
+
+  const db = window.db;
+  const auth = window.auth;
+
+  let currentUser = null;
+
+  // =========================
+  // ELEMENTS
+  // =========================
+  const canvas = document.getElementById('plinkoCanvas');
+  const ctx = canvas.getContext('2d');
+  const dropBtn = document.getElementById('dropBtn');
+  const betInput = document.getElementById('betAmount');
+  const balanceEl = document.getElementById('balance');
+  const totalWonEl = document.getElementById('totalWon');
+  const startAudioBtn = document.getElementById('startAudio');
+
+  // =========================
+  // GAME STATE (UNCHANGED)
+  // =========================
+  let balance = 1000;
+  let totalWon = 0;
+
+  // =========================
+  // LOAD USER FROM FIREBASE
+  // =========================
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      alert("Please login first.");
+      return;
+    }
+
+    currentUser = user;
+
+    try {
+      const doc = await db.collection("users").doc(user.uid).get();
+
+      if (doc.exists) {
+        balance = doc.data().balance || 1000;
+      } else {
+        // create user doc if not exists
+        await db.collection("users").doc(user.uid).set({
+          balance: balance
+        });
+      }
+
+      updateUI();
+    } catch (err) {
+      console.error("Firestore error:", err);
+    }
+  });
+
+  // =========================
+  // CANVAS SCALING
+  // =========================
+  function scaleCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = 400, h = 600;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  scaleCanvas();
+
+  // =========================
+  // GAME CONFIG (UNCHANGED)
+  // =========================
+  const pegs = [];
+  const balls = [];
+  const slots = [];
+  const slotMultipliers = [0,0.05,0.1,0.5,1,2,5,10,50,100];
+  const rows = 10;
+  const cols = 9;
+  const pegRadius = 4;
+  const ballRadius = 6;
+  const gravity = 0.25;
+  const damping = 0.75;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const offset = (r % 2) * 20;
+      pegs.push({ x: 40 + c * 36 + offset, y: 50 + r * 45 });
+    }
+  }
+  for (let i = 0; i <= cols; i++) {
+    slots.push({ x: 40 + i * 36 });
+  }
+
+  class Ball {
+    constructor(x,y,color,bet){
+      this.x=x; this.y=y;
+      this.vx=0; this.vy=0;
+      this.color=color;
+      this.bet=bet;
+      this.stopped=false;
+    }
+
+    update(){
+      if(this.stopped) return;
+
+      this.vy += gravity;
+      this.x += this.vx;
+      this.y += this.vy;
+
+      for(const peg of pegs){
+        const dx = this.x - peg.x;
+        const dy = this.y - peg.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(dist < pegRadius + ballRadius){
+          const angle = Math.atan2(dy, dx);
+          const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy) || 2;
+          this.vx = Math.cos(angle) * speed * damping;
+          this.vy = Math.sin(angle) * speed * damping;
+        }
+      }
+
+      if(this.x < ballRadius) this.x = ballRadius;
+      if(this.x > 400 - ballRadius) this.x = 400 - ballRadius;
+
+      if(this.y > 600 - 30 - ballRadius){
+        this.stopped = true;
+        this.handleResult();
+      }
+    }
+
+    handleResult(){
+      let nearest = 0, minD = Infinity;
+
+      for(let i=0;i<slots.length;i++){
+        const d = Math.abs(this.x - slots[i].x);
+        if(d < minD){ minD = d; nearest = i; }
+      }
+
+      const multiplier = slotMultipliers[nearest] || 0;
+      const winAmount = this.bet * multiplier;
+
+      if(winAmount > 0){
+        totalWon += winAmount;
+        balance += winAmount;
+      }
+
+      updateUI();
+    }
+
+    draw(){
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,ballRadius,0,Math.PI*2);
+      ctx.fillStyle=this.color;
+      ctx.shadowBlur=15;
+      ctx.shadowColor=this.color;
+      ctx.fill();
+      ctx.shadowBlur=0;
+    }
+  }
+
+  function drawPegs(){
+    ctx.fillStyle="#fff";
+    for(const p of pegs){
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,pegRadius,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawSlots(){
+    ctx.strokeStyle="#8e00ff";
+    ctx.lineWidth=2;
+    for(let i=0;i<slots.length;i++){
+      ctx.beginPath();
+      ctx.moveTo(slots[i].x,570);
+      ctx.lineTo(slots[i].x,600);
+      ctx.stroke();
+    }
+  }
+
+  function updateUI(){
+    balanceEl.innerText = balance.toFixed(2);
+    totalWonEl.innerText = totalWon.toFixed(2);
+  }
+
+  function gameLoop(){
+    ctx.clearRect(0,0,400,600);
+    drawPegs();
+    drawSlots();
+    for(const b of balls){ b.update(); b.draw(); }
+    requestAnimationFrame(gameLoop);
+  }
+
+  dropBtn.addEventListener('click', () => {
+    const bet = parseFloat(betInput.value);
+    if(isNaN(bet) || bet <= 0) return alert("Invalid bet");
+    if(bet > balance) return alert("Not enough balance");
+
+    balance -= bet;
+    updateUI();
+
+    const ball = new Ball(200, 12, "#ff00b3", bet);
+    balls.push(ball);
+  });
+
+  updateUI();
+  gameLoop();
+
+});
+</script>
 </body>
 </html>
